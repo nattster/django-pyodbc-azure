@@ -428,6 +428,14 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             new_type += " NOT NULL"
         return new_type
 
+    def column_sql(self, model, field, include_default=False):
+        sql, param = super(DatabaseSchemaEditor, self).column_sql(model, field, include_default=include_default)
+        if field.null and field.unique:
+            sql = sql.replace("UNIQUE", "")
+            # skip creating unique at this time, we later create FilteredIndex
+            #  this allow UNIQUE on NULL column (and treat NULL as not duplicate)
+        return sql, param
+
     def add_field(self, model, field):
         """
         Creates a field on a model.
@@ -453,6 +461,17 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             "definition": definition,
         }
         self.execute(sql, params)
+        # create FilteredIndex (to allow UNIQUE on NULL column)
+        if field.null and field.unique:
+            print('field is null and unique')
+            sql = "CREATE UNIQUE NONCLUSTERED INDEX %(name)s ON %(table)s(%(column)s)"\
+                  " WHERE %(column)s IS NOT NULL" % {
+                "name": self._create_index_name(model, [field.column]),
+                "table": self.quote_name(model._meta.db_table),
+                "column": self.quote_name(field.column)
+            }
+            self.execute(sql)
+
         # Drop the default if we need to
         # (Django usually does not use in-database defaults)
         if not self.skip_default(field) and self.effective_default(field) is not None:
