@@ -516,12 +516,12 @@ class CursorWrapper(object):
             return 'BIT'
         elif isinstance(value, Decimal):
             return 'NUMERIC'
+        elif isinstance(value, datetime.datetime):
+            return 'DATETIME2'
         elif isinstance(value, datetime.date):
             return 'DATE'
         elif isinstance(value, datetime.time):
             return 'TIME'
-        elif isinstance(value, datetime.datetime):
-            return 'TIMESTAMP'
         elif isinstance(value, UUID):
             return 'uniqueidentifier'
         else:
